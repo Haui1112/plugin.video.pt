@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import datetime, timedelta
 import requests
 import json
 import xbmcvfs
@@ -25,6 +26,21 @@ def get_url(**kwargs):
     return "{}?{}".format(URL, urlencode(kwargs))
 
 
+def fetch_instances(filepath):
+    """Real instance fetching"""
+    request = requests.get(
+        "https://instances.joinpeertube.org/api/v1/instances/hosts?count=1000&start=0&sort=createdAt"
+    )
+    r = request.json()
+    r["date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+    try:
+        with xbmcvfs.File(filepath, "w") as instances_file:
+            instances_file.write(json.dumps(r, ensure_ascii=False, indent=4))
+    except:
+        xbmc.log("Could not write %s" % filepath, xbmc.LOGDEBUG)
+    return r
+
+
 def get_instances():
     filename = "instances.json"
     if not xbmcvfs.exists(USERDATA_PATH):
@@ -35,18 +51,14 @@ def get_instances():
     FILE_PATH = os.path.join(USERDATA_PATH, filename)
     if not xbmcvfs.exists(FILE_PATH):
         xbmc.log("No file, requesting new data!", xbmc.LOGDEBUG)
-        request = requests.get(
-            "https://instances.joinpeertube.org/api/v1/instances/hosts?count=1000&start=0&sort=createdAt"
-        )
-        r = request.json()
-        try:
-            with xbmcvfs.File(FILE_PATH, "w") as instances_file:
-                instances_file.write(json.dumps(r, ensure_ascii=False, indent=4))
-        except:
-            xbmc.log("Could not write %s" % FILE_PATH, xbmc.LOGDEBUG)
+        r = fetch_instances(FILE_PATH)
     else:
         with xbmcvfs.File(FILE_PATH) as instances_file:
             r = json.load(instances_file)
+        t1 = datetime.strptime(r["date"], "%Y-%m-%d %H:%M")
+        t2 = datetime.now()
+        if t2 - t1 > timedelta(days=1):
+            r = fetch_instances(FILE_PATH)
     return r["data"]
 
 
