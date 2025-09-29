@@ -45,7 +45,7 @@ def get_instances():
     filename = "instances.json"
     if not xbmcvfs.exists(USERDATA_PATH):
         try:
-            xbmcvfs.makedir(USERDATA_PATH)
+            xbmcvfs.mkdir(USERDATA_PATH)
         except:
             xbmc.log("Could not write %s" % USERDATA_PATH, xbmc.LOGDEBUG)
     FILE_PATH = os.path.join(USERDATA_PATH, filename)
