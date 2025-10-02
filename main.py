@@ -22,7 +22,7 @@ ADDON_PATH = translatePath(Addon().getAddonInfo("path"))
 IMAGE_DIR = os.path.join(ADDON_PATH, "resources", "images")
 ADDON_ID = "plugin.video.pt"
 USERDATA_PATH = f"special://userdata/addon_data/{ADDON_ID}/"
-FAVORITE = os.path.join(USERDATA_PATH, "favorite.json")
+FAVORITE = os.path.join(USERDATA_PATH, "favorites.json")
 CACHE = os.path.join(USERDATA_PATH, "cache")
 
 
@@ -105,13 +105,24 @@ def get_host_info(host):
     """Get metadata about host : description, logo"""
     request = requests.get(f"https://{host}/api/v1/config")
     r = request.json()
+    host_info = {}
+    attributes = [
+        "name",
+        "shortDescription",
+        "isNSFW",
+        "serverCountry",
+        "defaultLanguage",
+    ]
+    for attribute in attributes:
+        if attribute in r["instance"]:
+            host_info[attribute] = r["instance"][attribute]
     if "logo" in r["instance"]:
         logos = sorted(r["instance"]["logo"], key=lambda x: x["height"], reverse=True)
         logo_url = logos[0]["fileUrl"]
-        r["instance"]["logo_url"] = logo_url
-        r["instance"]["logo_path"] = get_image(logo_url)
+        host_info["logo_url"] = logo_url
+        host_info["logo_path"] = get_image(logo_url)
 
-    return r["instance"]
+    return host_info
 
 
 def get_videos(host):
@@ -149,9 +160,11 @@ def list_videos(host):
                 data = json.load(favorite)
             except:
                 data = {}
-    if host not in data:
+    if "instances" not in data:
+        data["instances"] = {}
+    if host not in data["instances"]:
         host_info = get_host_info(host)
-        data[host] = host_info
+        data["instances"][host] = host_info
     try:
         with xbmcvfs.File(FAVORITE, "w") as favorite:
             favorite.write(json.dumps(data, ensure_ascii=False, indent=4))
@@ -198,8 +211,8 @@ def delete_instance(host):
         except Exception as e:
             xbmc.log(f"Could not read {FAVORITE} beacause {e}", xbmc.LOGDEBUG)
             data = {}
-    if host in data:
-        data.pop(host)
+    if host in data["instances"]:
+        data["instances"].pop(host)
     try:
         with xbmcvfs.File(FAVORITE, "w") as favorite:
             favorite.write(json.dumps(data, ensure_ascii=False, indent=4))
@@ -225,25 +238,26 @@ def home():
                 data = json.load(favorite)
             except:
                 data = {}
-            for instance, metadata in data.items():
-                list_item = xbmcgui.ListItem(metadata["name"])
-                if "logo_path" in metadata:
-                    list_item.setArt({"icon": metadata["logo_path"]})
-                elif xbmcvfs.exists(os.path.join(USERDATA_PATH, f"{instance}.png")):
-                    list_item.setArt(
-                        {"icon": os.path.join(USERDATA_PATH, f"{instance}.png")}
-                    )
-                else:
-                    list_item.setArt({"icon": f"{IMAGE_DIR}/icon.png"})
+            if "instances" in data:
+                for instance, metadata in data["instances"].items():
+                    list_item = xbmcgui.ListItem(metadata["name"])
+                    if "logo_path" in metadata:
+                        list_item.setArt({"icon": metadata["logo_path"]})
+                    elif xbmcvfs.exists(os.path.join(USERDATA_PATH, f"{instance}.png")):
+                        list_item.setArt(
+                            {"icon": os.path.join(USERDATA_PATH, f"{instance}.png")}
+                        )
+                    else:
+                        list_item.setArt({"icon": f"{IMAGE_DIR}/icon.png"})
 
-                list_item.setInfo("video", {"plot": metadata["shortDescription"]})
-                url_delete = get_url(action="delete", host=instance)
-                list_item.addContextMenuItems(
-                    [("Delete", f"Container.Update({url_delete})")]
-                )
-                is_folder = True
-                url = get_url(action="listing", host=instance)
-                xbmcplugin.addDirectoryItem(HANDLE, url, list_item, is_folder)
+                    list_item.setInfo("video", {"plot": metadata["shortDescription"]})
+                    url_delete = get_url(action="delete", host=instance)
+                    list_item.addContextMenuItems(
+                        [("Delete", f"Container.Update({url_delete})")]
+                    )
+                    is_folder = True
+                    url = get_url(action="listing", host=instance)
+                    xbmcplugin.addDirectoryItem(HANDLE, url, list_item, is_folder)
 
     xbmcplugin.endOfDirectory(HANDLE)
 
