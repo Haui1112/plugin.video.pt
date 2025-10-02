@@ -1,11 +1,16 @@
+"""
+Next generation Peertube Addon for Kodi Mediacenter
+"""
+
 import os
 import sys
 from datetime import datetime, timedelta
-import requests
 import json
-import xbmcvfs
-from urllib.parse import urlencode, parse_qsl
+import posixpath
+from urllib.parse import urlencode, parse_qsl, urlsplit, unquote
+import requests
 
+import xbmcvfs
 import xbmcgui
 import xbmcplugin
 from xbmcaddon import Addon
@@ -18,8 +23,7 @@ IMAGE_DIR = os.path.join(ADDON_PATH, "resources", "images")
 ADDON_ID = "plugin.video.pt"
 USERDATA_PATH = f"special://userdata/addon_data/{ADDON_ID}/"
 FAVORITE = os.path.join(USERDATA_PATH, "favorite.json")
-
-xbmc.log(f"ADDON_PATH {ADDON_PATH}", xbmc.LOGINFO)
+CACHE = os.path.join(USERDATA_PATH, "cache")
 
 
 def get_url(**kwargs):
@@ -79,6 +83,37 @@ def list_instances():
     xbmcplugin.endOfDirectory(HANDLE)
 
 
+def get_image(url):
+    """Cache image and return local path"""
+    if not xbmcvfs.exists(CACHE):
+        try:
+            xbmcvfs.mkdir(CACHE)
+        except:
+            xbmc.log("Could not write %s" % CACHE, xbmc.LOGDEBUG)
+    urlpath = urlsplit(url).path
+    logo_filename = posixpath.basename(unquote(urlpath))
+    image = os.path.join(CACHE, logo_filename)
+    if not xbmcvfs.exists(image):
+        # download
+        response = requests.get(url, timeout=15)
+        with xbmcvfs.File(image, "wb") as file:
+            file.write(response.content)
+    return image
+
+
+def get_host_info(host):
+    """Get metadata about host : description, logo"""
+    request = requests.get(f"https://{host}/api/v1/config")
+    r = request.json()
+    if "logo" in r["instance"]:
+        logos = sorted(r["instance"]["logo"], key=lambda x: x["height"], reverse=True)
+        logo_url = logos[0]["fileUrl"]
+        r["instance"]["logo_url"] = logo_url
+        r["instance"]["logo_path"] = get_image(logo_url)
+
+    return r["instance"]
+
+
 def get_videos(host):
     request = requests.get("https://%s/api/v1/videos?isLocal=true" % (host))
     r = request.json()
@@ -115,7 +150,8 @@ def list_videos(host):
             except:
                 data = {}
     if host not in data:
-        data[host] = "TODO"
+        host_info = get_host_info(host)
+        data[host] = host_info
     try:
         with xbmcvfs.File(FAVORITE, "w") as favorite:
             favorite.write(json.dumps(data, ensure_ascii=False, indent=4))
@@ -155,7 +191,7 @@ def play_video(path):
 
 
 def delete_instance(host):
-    xbmc.log("Delete %s" % host, xbmc.LOGINFO)
+    """Remove instance from favorite"""
     with xbmcvfs.File(FAVORITE, "r") as favorite:
         try:
             data = json.load(favorite)
@@ -172,6 +208,7 @@ def delete_instance(host):
 
 
 def home():
+    """Homepage"""
     xbmcplugin.setPluginCategory(HANDLE, "Peertube")
     xbmcplugin.setContent(HANDLE, "movies")
 
@@ -188,9 +225,18 @@ def home():
                 data = json.load(favorite)
             except:
                 data = {}
-            for instance in data:
-                list_item = xbmcgui.ListItem(instance)
-                list_item.setArt({"icon": "icon.png"})
+            for instance, metadata in data.items():
+                list_item = xbmcgui.ListItem(metadata["name"])
+                if "logo_path" in metadata:
+                    list_item.setArt({"icon": metadata["logo_path"]})
+                elif xbmcvfs.exists(os.path.join(USERDATA_PATH, f"{instance}.png")):
+                    list_item.setArt(
+                        {"icon": os.path.join(USERDATA_PATH, f"{instance}.png")}
+                    )
+                else:
+                    list_item.setArt({"icon": f"{IMAGE_DIR}/icon.png"})
+
+                list_item.setInfo("video", {"plot": metadata["shortDescription"]})
                 url_delete = get_url(action="delete", host=instance)
                 list_item.addContextMenuItems(
                     [("Delete", f"Container.Update({url_delete})")]
