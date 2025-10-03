@@ -121,6 +121,11 @@ def get_host_info(host):
         logo_url = logos[0]["fileUrl"]
         host_info["logo_url"] = logo_url
         host_info["logo_path"] = get_image(logo_url)
+    elif "avatars" in r["instance"]:
+        avatars = sorted(r["instance"]["avatars"], key=lambda x: x["width"], reverse=True)
+        avatar_url = avatars[0]["fileUrl"]
+        host_info["logo_url"] = avatar_url
+        host_info["logo_path"] = get_image(avatar_url)
 
     return host_info
 
