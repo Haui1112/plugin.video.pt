@@ -33,7 +33,8 @@ def get_url(**kwargs):
 def fetch_instances(filepath):
     """Real instance fetching"""
     request = requests.get(
-        "https://instances.joinpeertube.org/api/v1/instances/hosts?count=1000&start=0&sort=createdAt"
+        "https://instances.joinpeertube.org/api/v1/instances/hosts?count=1000&start=0&sort=createdAt",
+        timeout=15,
     )
     r = request.json()
     r["date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -103,7 +104,7 @@ def get_image(url):
 
 def get_host_info(host):
     """Get metadata about host : description, logo"""
-    request = requests.get(f"https://{host}/api/v1/config")
+    request = requests.get(f"https://{host}/api/v1/config", timeout=15)
     r = request.json()
     host_info = {}
     attributes = [
@@ -122,16 +123,19 @@ def get_host_info(host):
         host_info["logo_url"] = logo_url
         host_info["logo_path"] = get_image(logo_url)
     elif "avatars" in r["instance"]:
-        avatars = sorted(r["instance"]["avatars"], key=lambda x: x["width"], reverse=True)
-        avatar_url = avatars[0]["fileUrl"]
-        host_info["logo_url"] = avatar_url
-        host_info["logo_path"] = get_image(avatar_url)
+        if r["instance"]["avatars"]:
+            avatars = sorted(
+                r["instance"]["avatars"], key=lambda x: x["width"], reverse=True
+            )
+            avatar_url = avatars[0]["fileUrl"]
+            host_info["logo_url"] = avatar_url
+            host_info["logo_path"] = get_image(avatar_url)
 
     return host_info
 
 
 def get_videos(host):
-    request = requests.get("https://%s/api/v1/videos?isLocal=true" % (host))
+    request = requests.get(f"https://{host}/api/v1/videos?isLocal=true", timeout=15)
     r = request.json()
     return r["data"]
 
@@ -157,7 +161,8 @@ def generate_item_info(
     }
 
 
-def list_videos(host):
+def bookmark_host(host):
+    """Add host to favorite instances"""
     data = {}
     if xbmcvfs.exists(FAVORITE):
         with xbmcvfs.File(FAVORITE, "r") as favorite:
@@ -279,7 +284,9 @@ def router(paramstring):
         home()
 
     elif params["action"] == "listing":
-        list_videos(params["host"])
+        host = params["host"]
+        bookmark_host(host)
+        list_videos(host)
 
     elif params["action"] == "play":
         play_video(params["video"])
