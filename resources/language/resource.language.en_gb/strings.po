@@ -1,0 +1,45 @@
+# Kodi language file
+# Addon id: plugin.video.pt
+# Addon Provider: haui
+msgid ""
+msgstr ""
+"Project-Id-Version: Kodi-Addons\n"
+"Last-Translator: haui <haui@giftedmc.com>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: en\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+
+msgctxt "Addon Summary"
+msgid "Next Gen Peertube Addon."
+msgstr ""
+
+msgctxt "Addon Description"
+msgid "In lieu of a working peertube addon, I've decided to make a new one."
+msgstr ""
+
+#Plugin name
+
+msgctxt "#30000"
+msgid "Next Gen Peertube Addon"
+msgstr ""
+
+#Settings
+#empty strings from id 30001 to 30099
+
+msgctxt "#30100"
+msgid "Custom instances"
+msgstr ""
+
+msgctxt "#30101"
+msgid "Add Custom instance"
+msgstr ""
+
+msgctxt "#30102"
+msgid "Remove Custom instance"
+msgstr ""
+
+#empty strings from id 30103 to 30109
+
+ko
