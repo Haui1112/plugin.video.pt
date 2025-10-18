@@ -17,6 +17,7 @@ ICONS_DIR = os.path.join(ADDON_PATH, 'resources', 'images', 'icons')
 FANART_DIR = os.path.join(ADDON_PATH, 'resources', 'images', 'fanart')
 ADDON_ID = 'plugin.video.pt'
 USERDATA_PATH = f'special://userdata/addon_data/{ADDON_ID}/'
+CUSTOM_INSTANCE = xbmcplugin.getSetting(HANDLE,"custom_instance")
 
 def get_url(**kwargs):
     return '{}?{}'.format(URL, urlencode(kwargs))
@@ -54,6 +55,15 @@ def list_instances():
         info_tag.setTitle(genre_info['host'])
         info_tag.setGenres([genre_info['host']])
         url = get_url(action='listing', host=genre_info['host'])
+        is_folder = True
+        xbmcplugin.addDirectoryItem(HANDLE, url, list_item, is_folder)
+    if not CUSTOM_INSTANCE == "":
+        list_item = xbmcgui.ListItem(label=CUSTOM_INSTANCE)
+        info_tag = list_item.getVideoInfoTag()
+        info_tag.setMediaType('video')
+        info_tag.setTitle(CUSTOM_INSTANCE)
+        #info_tag.setGenres(CUSTOM_INSTANCE)
+        url = get_url(action='listing', host=CUSTOM_INSTANCE)
         is_folder = True
         xbmcplugin.addDirectoryItem(HANDLE, url, list_item, is_folder)
     xbmcplugin.addSortMethod(HANDLE, xbmcplugin.SORT_METHOD_LABEL_IGNORE_THE)
