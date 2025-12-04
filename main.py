@@ -32,7 +32,7 @@ def get_instances():
     FILE_PATH = os.path.join(USERDATA_PATH, filename)
     if not xbmcvfs.exists(FILE_PATH):
         xbmc.log("No file, requesting new data!", xbmc.LOGDEBUG)
-        request = requests.get('https://instances.joinpeertube.org/api/v1/instances/hosts?count=1000&start=0&sort=createdAt')
+        request = requests.get('https://instances.joinpeertube.org/api/v1/instances/hosts?count=2000&start=0&sort=createdAt')
         r = request.json()
         try:
             with xbmcvfs.File(FILE_PATH) as instances_file:
